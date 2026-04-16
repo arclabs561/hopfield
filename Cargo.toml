@@ -1,0 +1,12 @@
+[package]
+name = "hopfield"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+description = "Dense associative memory and modern Hopfield networks"
+repository = "https://github.com/arclabs561/hopfield"
+keywords = ["hopfield", "associative-memory", "attention", "energy-based", "pattern-retrieval"]
+categories = ["algorithms", "science"]
+
+[workspace]
