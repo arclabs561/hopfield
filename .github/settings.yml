@@ -1,0 +1,11 @@
+repository:
+  description: "Dense associative memory and modern Hopfield networks"
+  topics:
+    - hopfield-network
+    - associative-memory
+    - attention
+    - energy-based
+    - machine-learning
+  default_branch: main
+  has_wiki: false
+  has_projects: false
