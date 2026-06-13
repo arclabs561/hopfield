@@ -47,6 +47,22 @@
 //! assert!(retrieved[0].abs() < 1.0);
 //! assert!(retrieved[1].abs() < 1.0);
 //! ```
+/// Squared L2 distance between `v` and `xi`. With the `simd` feature this
+/// dispatches to innr's SIMD f64 kernel (AVX-512/AVX2/NEON) for higher
+/// dimensions; otherwise it is a portable scalar loop. Behaviour is
+/// identical either way.
+#[inline]
+fn l2_sq(v: &[f64], xi: &[f64]) -> f64 {
+    #[cfg(feature = "simd")]
+    {
+        innr::dense_f64::l2_distance_squared_f64(v, xi)
+    }
+    #[cfg(not(feature = "simd"))]
+    {
+        v.iter().zip(xi.iter()).map(|(a, b)| (a - b).powi(2)).sum()
+    }
+}
+
 
 /// Compute kernel sum: Σ_μ κ(v, ξ^μ)
 ///
@@ -138,11 +154,7 @@ pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     let log_terms: Vec<f64> = memories
         .iter()
         .map(|xi| {
-            let sq_dist: f64 = v
-                .iter()
-                .zip(xi.iter())
-                .map(|(vi, xii)| (vi - xii).powi(2))
-                .sum();
+            let sq_dist: f64 = l2_sq(v, xi);
             neg_half_beta * sq_dist
         })
         .collect();
@@ -178,10 +190,7 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     let sq_dists: Vec<f64> = memories
         .iter()
         .map(|xi| {
-            v.iter()
-                .zip(xi.iter())
-                .map(|(vi, xii)| (vi - xii).powi(2))
-                .sum()
+            l2_sq(v, xi)
         })
         .collect();
 
@@ -259,11 +268,7 @@ pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     let sum: f64 = memories
         .iter()
         .map(|xi| {
-            let sq_dist: f64 = v
-                .iter()
-                .zip(xi.iter())
-                .map(|(vi, xii)| (vi - xii).powi(2))
-                .sum();
+            let sq_dist: f64 = l2_sq(v, xi);
             (1.0 - half_beta * sq_dist).max(0.0) // ReLU
         })
         .sum();
@@ -294,11 +299,7 @@ pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     let kernel_vals: Vec<f64> = memories
         .iter()
         .map(|xi| {
-            let sq_dist: f64 = v
-                .iter()
-                .zip(xi.iter())
-                .map(|(vi, xii)| (vi - xii).powi(2))
-                .sum();
+            let sq_dist: f64 = l2_sq(v, xi);
             (1.0 - half_beta * sq_dist).max(0.0)
         })
         .collect();
