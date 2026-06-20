@@ -22,6 +22,10 @@
 //! | [`energy_lse_grad`] | Gradient of LSE energy |
 //! | [`energy_lsr`] | LSR energy (Epanechnikov kernel) |
 //! | [`energy_lsr_grad`] | Gradient of LSR energy |
+//! | [`lse_weights`] | Soft attention weights over memories |
+//! | [`sparsemax_weights`] | Sparse attention weights over memories |
+//! | [`retrieve_lse`] | One-step LSE memory retrieval |
+//! | [`retrieve_sparsemax`] | One-step sparse memory retrieval |
 //! | [`retrieve_memory`] | Energy descent retrieval loop |
 //!
 //! ## Example
@@ -63,7 +67,6 @@ fn l2_sq(v: &[f64], xi: &[f64]) -> f64 {
     }
 }
 
-
 /// Compute kernel sum: Σ_μ κ(v, ξ^μ)
 ///
 /// This is the core computation in Associative Memory and kernel machines.
@@ -104,6 +107,129 @@ where
     F: Fn(&[f64], &[f64]) -> f64,
 {
     memories.iter().map(|xi| kernel(v, xi)).sum()
+}
+
+/// Softmax projection onto the probability simplex.
+///
+/// This is the dense retrieval map used by LSE attention: every finite logit
+/// receives positive mass, with larger logits receiving exponentially more.
+///
+/// # Example
+///
+/// ```rust
+/// use hopfield::softmax;
+///
+/// let weights = softmax(&[1.0, 2.0, 3.0]);
+/// assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+/// assert!(weights[2] > weights[1] && weights[1] > weights[0]);
+/// ```
+pub fn softmax(logits: &[f64]) -> Vec<f64> {
+    if logits.is_empty() {
+        return Vec::new();
+    }
+
+    let max_logit = logits.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let exp: Vec<f64> = logits.iter().map(|&x| (x - max_logit).exp()).collect();
+    let sum: f64 = exp.iter().sum();
+
+    exp.into_iter().map(|x| x / sum).collect()
+}
+
+/// Sparsemax projection onto the probability simplex.
+///
+/// Sparsemax is the Euclidean projection of logits onto the simplex. Unlike
+/// softmax, it can assign exact zero weight to low-scoring memories, making the
+/// retrieval set explicit.
+///
+/// # Example
+///
+/// ```rust
+/// use hopfield::sparsemax;
+///
+/// let weights = sparsemax(&[1.0, 1.0, 0.0]);
+/// assert_eq!(weights, vec![0.5, 0.5, 0.0]);
+/// ```
+pub fn sparsemax(logits: &[f64]) -> Vec<f64> {
+    if logits.is_empty() {
+        return Vec::new();
+    }
+
+    let mut sorted = logits.to_vec();
+    sorted.sort_by(|a, b| b.total_cmp(a));
+
+    let mut cumsum = 0.0;
+    let mut support = 0;
+    for (i, z) in sorted.iter().enumerate() {
+        cumsum += z;
+        let k = i + 1;
+        if 1.0 + (k as f64) * z > cumsum {
+            support = k;
+        }
+    }
+
+    if support == 0 {
+        return vec![0.0; logits.len()];
+    }
+
+    let tau = (sorted.iter().take(support).sum::<f64>() - 1.0) / support as f64;
+    logits.iter().map(|&z| (z - tau).max(0.0)).collect()
+}
+
+fn similarity_logits(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    let neg_half_beta = -0.5 * beta;
+    memories
+        .iter()
+        .map(|xi| neg_half_beta * l2_sq(v, xi))
+        .collect()
+}
+
+/// LSE retrieval weights over memories.
+///
+/// The logits are `-beta / 2 * ||v - xi||^2`, then softmaxed. These are the
+/// same weights used by [`energy_lse_grad`].
+pub fn lse_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    softmax(&similarity_logits(v, memories, beta))
+}
+
+/// Sparsemax retrieval weights over memories.
+///
+/// The logits match [`lse_weights`], but sparsemax projects them onto the
+/// simplex with exact zeros for low-scoring memories.
+pub fn sparsemax_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    sparsemax(&similarity_logits(v, memories, beta))
+}
+
+/// Weighted average of stored memories.
+///
+/// Returns an empty vector if the memory bank is empty, the weight count does
+/// not match the memory count, or stored memories have inconsistent dimensions.
+pub fn weighted_memory(memories: &[Vec<f64>], weights: &[f64]) -> Vec<f64> {
+    let Some(first) = memories.first() else {
+        return Vec::new();
+    };
+
+    if weights.len() != memories.len() || memories.iter().any(|memory| memory.len() != first.len())
+    {
+        return Vec::new();
+    }
+
+    let mut out = vec![0.0; first.len()];
+    for (weight, memory) in weights.iter().zip(memories.iter()) {
+        for (dst, src) in out.iter_mut().zip(memory.iter()) {
+            *dst += weight * src;
+        }
+    }
+    out
+}
+
+/// One-step LSE retrieval as a dense weighted average of memories.
+pub fn retrieve_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    weighted_memory(memories, &lse_weights(v, memories, beta))
+}
+
+/// One-step sparsemax retrieval as a sparse weighted average of memories.
+pub fn retrieve_sparsemax(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    weighted_memory(memories, &sparsemax_weights(v, memories, beta))
 }
 
 /// Log-Sum-Exp (LSE) energy for Dense Associative Memory.
@@ -184,31 +310,12 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     }
 
     let d = v.len();
-    let neg_half_beta = -0.5 * beta;
-
-    // Compute softmax weights
-    let sq_dists: Vec<f64> = memories
-        .iter()
-        .map(|xi| {
-            l2_sq(v, xi)
-        })
-        .collect();
-
-    let log_weights: Vec<f64> = sq_dists.iter().map(|&d| neg_half_beta * d).collect();
-    let max_log = log_weights
-        .iter()
-        .cloned()
-        .fold(f64::NEG_INFINITY, f64::max);
-
-    let exp_weights: Vec<f64> = log_weights.iter().map(|&w| (w - max_log).exp()).collect();
-    let sum_exp: f64 = exp_weights.iter().sum();
-
-    let softmax_weights: Vec<f64> = exp_weights.iter().map(|&w| w / sum_exp).collect();
+    let weights = lse_weights(v, memories, beta);
 
     // Gradient: β Σ_μ w_μ (v - ξ^μ)
     let mut grad = vec![0.0; d];
     for (mu, xi) in memories.iter().enumerate() {
-        let w = softmax_weights[mu];
+        let w = weights[mu];
         for (i, (vi, xii)) in v.iter().zip(xi.iter()).enumerate() {
             grad[i] += w * (vi - xii);
         }
@@ -524,5 +631,54 @@ mod tests {
         // grad = (beta / sum) * (query - memory)
         assert!(grad[0] > 0.0);
         assert!((grad[1] - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_softmax_is_dense_simplex_projection() {
+        let weights = softmax(&[1.0, 2.0, 3.0]);
+
+        assert_eq!(weights.len(), 3);
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+        assert!(weights.iter().all(|w| *w > 0.0));
+        assert!(weights[2] > weights[1] && weights[1] > weights[0]);
+    }
+
+    #[test]
+    fn test_sparsemax_can_select_exact_support() {
+        let weights = sparsemax(&[1.0, 1.0, 0.0]);
+
+        assert_eq!(weights, vec![0.5, 0.5, 0.0]);
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_sparsemax_retrieval_drops_far_memory() {
+        let memories = vec![vec![0.0], vec![1.0], vec![10.0]];
+        let query = [0.25];
+        let weights = sparsemax_weights(&query, &memories, 2.0);
+        let retrieved = weighted_memory(&memories, &weights);
+
+        assert!((weights.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+        assert_eq!(weights[2], 0.0);
+        assert!((retrieved[0] - 0.25).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_weighted_memory_rejects_inconsistent_shapes() {
+        assert!(weighted_memory(&[vec![0.0], vec![1.0]], &[1.0]).is_empty());
+        assert!(weighted_memory(&[vec![0.0], vec![1.0, 2.0]], &[0.5, 0.5]).is_empty());
+    }
+
+    #[test]
+    fn test_lse_and_sparsemax_retrieval_agree_on_clear_match() {
+        let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0], vec![-10.0, 10.0]];
+        let query = [0.1, -0.1];
+
+        let dense = retrieve_lse(&query, &memories, 4.0);
+        let sparse = retrieve_sparsemax(&query, &memories, 4.0);
+
+        assert!(dense[0].abs() < 1e-6);
+        assert!(dense[1].abs() < 1e-6);
+        assert_eq!(sparse, vec![0.0, 0.0]);
     }
 }

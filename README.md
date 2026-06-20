@@ -5,7 +5,8 @@ Dense associative memory and modern Hopfield networks.
 Energy-based content-addressable memory with exponential storage capacity
 (Ramsauer et al. 2021). Two energy formulations: LSE (smooth, approximate
 retrieval) and LSR (Epanechnikov kernel, exact single-step retrieval within
-basin radius, Hoover et al. 2025).
+basin radius, Hoover et al. 2025). Also includes dense and sparse one-step
+retrieval maps (`retrieve_lse`, `retrieve_sparsemax`) for attention-style use.
 
 ## Usage
 
@@ -38,5 +39,15 @@ let (retrieved, iters) = retrieve_memory(
 assert!(retrieved[0].abs() < 1.0);
 assert!(retrieved[1].abs() < 1.0);
 ```
+
+## Examples
+
+```bash
+cargo run --example associative_recall --release
+cargo run --example sparse_attention --release
+cargo run --example basin_scan --release
+```
+
+See [`examples/README.md`](examples/README.md) for what each example measures.
 
 Dual-licensed under MIT or Apache-2.0.
