@@ -699,6 +699,22 @@ mod tests {
     }
 
     #[test]
+    fn test_lsr_gradient_zero_at_stored_memory() {
+        // Hoover et al. (2025), Theorem 1: for well-separated memories the LSR
+        // energy gradient is EXACTLY zero at a stored pattern, which is why LSR
+        // retrieves exactly in a single step (LSE is only zero as beta -> inf).
+        // Here r = ||xi_1 - xi_2|| = sqrt(200) ~ 14.1; at beta = 2 the support
+        // radius sqrt(2/beta) = 1 excludes the other memory, so only the
+        // self-term is active and the gradient at xi_1 must vanish exactly.
+        let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0]];
+        let grad = energy_lsr_grad(&memories[0], &memories, 2.0);
+        assert!(
+            grad.iter().all(|g| g.abs() < 1e-12),
+            "LSR gradient at a stored memory must be exactly zero, got {grad:?}"
+        );
+    }
+
+    #[test]
     fn test_softmax_is_dense_simplex_projection() {
         let weights = softmax(&[1.0, 2.0, 3.0]);
 
