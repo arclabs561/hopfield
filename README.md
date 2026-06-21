@@ -52,18 +52,6 @@ cargo run --example basin_scan --release
 
 See [`examples/README.md`](examples/README.md) for what each example measures.
 
-## Connections
-
-- `rkhs` builds on this crate, re-exporting its energy and retrieval maps as the
-  dense-associative-memory layer of its kernel surface.
-- An optional `innr` dependency supplies SIMD-accelerated similarity for the
-  energy kernels.
-- The retrieval maps factor as *similarity then separation*: a dot-product score
-  followed by a normalizing map (`softmax` for LSE, `sparsemax` for the sparse
-  variant). Swapping the separation map for any Fenchel-Young regularizer is the
-  Hopfield-Fenchel-Young generalization (Santos et al. 2024); the entmax and
-  sparsemax primitives for it live in `fynch`.
-
 ## References
 
 - Ramsauer et al., *Hopfield Networks is All You Need* (arXiv:2008.02217).
