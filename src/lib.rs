@@ -232,6 +232,42 @@ pub fn retrieve_sparsemax(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f6
     weighted_memory(memories, &sparsemax_weights(v, memories, beta))
 }
 
+/// One-step Hopfield-Fenchel-Young retrieval, generalized over the separation map.
+///
+/// Every retrieval here factors as *similarity then separation then projection*:
+/// `retrieve(v) = Xᵀ · separation(β · similarity_logits(v))`. The built-in
+/// retrievers fix the separation map: [`retrieve_lse`] uses [`softmax`],
+/// [`retrieve_sparsemax`] uses [`sparsemax`]. This function takes the separation
+/// map as an argument, which is the Hopfield-Fenchel-Young generalization: any
+/// Fenchel-Young regularized-argmax is a valid separation map. An α-entmax map
+/// (α > 1, e.g. from the `fynch` crate) gives a sparse map with a positive
+/// margin, hence exact single-step retrieval within the basin (Santos et al.
+/// 2024, arXiv:2411.08590).
+///
+/// `separation` receives the similarity logits (one per stored memory) and
+/// returns a same-length weight vector.
+///
+/// # Example
+///
+/// ```rust
+/// use hopfield::{retrieve_fy, retrieve_lse, softmax};
+///
+/// let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0]];
+/// let v = [1.0, 1.0];
+///
+/// // Passing softmax as the separation map recovers retrieve_lse exactly.
+/// let general = retrieve_fy(&v, &memories, 1.0, softmax);
+/// let lse = retrieve_lse(&v, &memories, 1.0);
+/// assert!(general.iter().zip(&lse).all(|(a, b)| (a - b).abs() < 1e-12));
+/// ```
+pub fn retrieve_fy<F>(v: &[f64], memories: &[Vec<f64>], beta: f64, separation: F) -> Vec<f64>
+where
+    F: Fn(&[f64]) -> Vec<f64>,
+{
+    let logits = similarity_logits(v, memories, beta);
+    weighted_memory(memories, &separation(&logits))
+}
+
 /// Log-Sum-Exp (LSE) energy for Dense Associative Memory.
 ///
 /// E_β(v; Ξ) = -log Σ_μ exp(-β/2 ||v - ξ^μ||²)
@@ -610,6 +646,35 @@ mod tests {
             dist_to_first < 2.0,
             "should retrieve near first memory, got dist {}",
             dist_to_first
+        );
+    }
+
+    #[test]
+    fn test_retrieve_fy_hardmax_returns_nearest_memory() {
+        // A hardmax separation map (one-hot at the argmax logit) is a valid
+        // Fenchel-Young map the built-in retrievers don't provide; it gives
+        // exact nearest-memory retrieval, exercising the generalization beyond
+        // the softmax/sparsemax instances.
+        let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0]];
+        let v = [1.0, 1.0];
+
+        let hardmax = |logits: &[f64]| {
+            let argmax = logits
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .map(|(i, _)| i)
+                .unwrap();
+            (0..logits.len())
+                .map(|i| if i == argmax { 1.0 } else { 0.0 })
+                .collect::<Vec<f64>>()
+        };
+
+        let retrieved = retrieve_fy(&v, &memories, 1.0, hardmax);
+        assert_eq!(
+            retrieved,
+            vec![0.0, 0.0],
+            "hardmax should retrieve the nearest memory exactly"
         );
     }
 

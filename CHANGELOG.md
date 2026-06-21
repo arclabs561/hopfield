@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `retrieve_fy`: Hopfield-Fenchel-Young retrieval generalized over the
+  separation map. `retrieve_lse` and `retrieve_sparsemax` are the softmax and
+  sparsemax instances; any Fenchel-Young regularized-argmax (for example
+  α-entmax from `fynch`) is a valid map, and sparse maps give exact single-step
+  retrieval within the basin (Santos et al. 2024, arXiv:2411.08590).
 - Dense and sparse one-step retrieval helpers: `softmax`, `sparsemax`,
   `lse_weights`, `sparsemax_weights`, `weighted_memory`, `retrieve_lse`, and
   `retrieve_sparsemax`.
