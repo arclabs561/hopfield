@@ -14,7 +14,7 @@ maps (`retrieve_lse`, `retrieve_sparsemax`) for attention-style use.
 
 ```toml
 [dependencies]
-hopfield = "0.1"
+hopfield = "0.2"
 ```
 
 ```rust

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-24
+
 ### Added
 - `retrieve_fy`: Hopfield-Fenchel-Young retrieval generalized over the
   separation map. `retrieve_lse` and `retrieve_sparsemax` are the softmax and
