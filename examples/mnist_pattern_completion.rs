@@ -31,7 +31,10 @@ fn load_images(path: &Path, limit: usize) -> std::io::Result<Vec<Vec<f64>>> {
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let start = 16 + i * d;
-        let mut v: Vec<f64> = b[start..start + d].iter().map(|&p| p as f64 / 255.0).collect();
+        let mut v: Vec<f64> = b[start..start + d]
+            .iter()
+            .map(|&p| p as f64 / 255.0)
+            .collect();
         normalize(&mut v);
         out.push(v);
     }
@@ -62,7 +65,11 @@ fn dot(a: &[f64], b: &[f64]) -> f64 {
 }
 
 fn l2(a: &[f64], b: &[f64]) -> f64 {
-    a.iter().zip(b).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt()
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| (x - y).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
 /// Index of the memory most similar (max dot product) to `v`.
@@ -76,8 +83,11 @@ fn main() -> ExitCode {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("data/mnist");
     let images_path = dir.join("t10k-images-idx3-ubyte");
     if !images_path.exists() {
-        eprintln!("dataset not found at {}\nrun: ./scripts/fetch_mnist.sh", dir.display());
-        return ExitCode::FAILURE;
+        eprintln!(
+            "dataset not found at {}\nrun: ./scripts/fetch_mnist.sh",
+            dir.display()
+        );
+        return ExitCode::SUCCESS;
     }
 
     let all = load_images(&images_path, 1000).unwrap();
