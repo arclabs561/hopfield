@@ -7,6 +7,7 @@ the optimizer is enabled.
 |---|---|---|
 | Recover a noisy query from a larger memory bank | `associative_recall` | `cargo run --example associative_recall --release` |
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
+| Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
 | Inspect LSE vs LSR basin behavior | `basin_scan` | `cargo run --example basin_scan --release` |
 
 `associative_recall` is the best first example. It stores 64 deterministic
@@ -32,6 +33,18 @@ Expected excerpt:
 memories on circle: 80, beta: 28
 LSE support > 1e-6: 24; sparsemax support > 1e-12: 4
 LSE entropy: 2.3066; sparsemax entropy: 1.3256
+```
+
+`entmax_retrieval` uses the optional `fynch` feature to pass
+`fynch::Tsallis::entmax15()` as the Hopfield-Fenchel-Young retrieval map.
+Entmax keeps a sparse local support, but does not collapse as aggressively as
+sparsemax.
+
+Expected excerpt:
+
+```text
+support > 1e-12: lse=38, entmax15=6, sparsemax=4
+entropy: lse=2.3066, entmax15=1.3660, sparsemax=1.3256
 ```
 
 `basin_scan` samples a one-dimensional line through memory space and reports
