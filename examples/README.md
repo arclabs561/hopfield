@@ -9,6 +9,7 @@ the optimizer is enabled.
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
 | Bias retrieval scores before sparsemax | `biased_retrieval` | `cargo run --example biased_retrieval --release` |
 | Feed a gated state scan into retrieval | `state_scan_retrieval` | `cargo run --example state_scan_retrieval --release` |
+| Trace scalar energy descent during retrieval | `energy_descent_trace` | `cargo run --example energy_descent_trace --release` |
 | Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
 | Retrieve through adjacent-pair structured memories | `sparsemap_structured_retrieval` | `cargo run --example sparsemap_structured_retrieval --features fynch --release` |
 | Inspect LSE vs LSR basin behavior | `basin_scan` | `cargo run --example basin_scan --release` |
@@ -59,6 +60,16 @@ Expected excerpt:
 ```text
 support > 1e-12: lse=38, entmax15=6, sparsemax=4
 entropy: lse=2.3066, entmax15=1.3660, sparsemax=1.3256
+```
+
+`energy_descent_trace` prints the scalar LSE energy during gradient retrieval.
+It is a small EBT-style proof that the existing Hopfield energy and gradient
+surface can serve as a local energy-minimization loop.
+
+Expected excerpt:
+
+```text
+energy: 0.520677 -> -0.000170; distance to memory #0: 0.592368 -> 0.000313
 ```
 
 `sparsemap_structured_retrieval` scores individual memories with the same
