@@ -268,6 +268,46 @@ where
     weighted_memory(memories, &separation(&logits))
 }
 
+/// Retrieval weights from a `fynch` Fenchel-Young regularizer.
+///
+/// This is the typed version of [`retrieve_fy`]'s separation map. Enable the
+/// `fynch` feature, then pass any [`fynch::Regularizer`]: [`fynch::Shannon`]
+/// recovers [`lse_weights`], [`fynch::SquaredL2`] recovers
+/// [`sparsemax_weights`], and [`fynch::Tsallis`] gives entmax-style sparse
+/// retrieval.
+#[cfg(feature = "fynch")]
+pub fn regularized_weights<R>(
+    v: &[f64],
+    memories: &[Vec<f64>],
+    beta: f64,
+    regularizer: &R,
+) -> Vec<f64>
+where
+    R: fynch::Regularizer,
+{
+    regularizer.predict(&similarity_logits(v, memories, beta))
+}
+
+/// One-step retrieval through a `fynch` Fenchel-Young regularizer.
+///
+/// This keeps file-level Hopfield logic here and delegates the Ω-specific
+/// prediction map to `fynch`.
+#[cfg(feature = "fynch")]
+pub fn retrieve_regularized<R>(
+    v: &[f64],
+    memories: &[Vec<f64>],
+    beta: f64,
+    regularizer: &R,
+) -> Vec<f64>
+where
+    R: fynch::Regularizer,
+{
+    weighted_memory(
+        memories,
+        &regularized_weights(v, memories, beta, regularizer),
+    )
+}
+
 /// Log-Sum-Exp (LSE) energy for Dense Associative Memory.
 ///
 /// E_β(v; Ξ) = -log Σ_μ exp(-β/2 ||v - ξ^μ||²)
@@ -676,6 +716,25 @@ mod tests {
             vec![0.0, 0.0],
             "hardmax should retrieve the nearest memory exactly"
         );
+    }
+
+    #[cfg(feature = "fynch")]
+    #[test]
+    fn test_fynch_regularizers_recover_builtin_retrievers() {
+        let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0], vec![-10.0, 10.0]];
+        let query = [0.1, -0.1];
+        let beta = 4.0;
+
+        let dense = retrieve_regularized(&query, &memories, beta, &fynch::Shannon);
+        let lse = retrieve_lse(&query, &memories, beta);
+        assert!(dense.iter().zip(&lse).all(|(a, b)| (a - b).abs() < 1e-12));
+
+        let sparse = retrieve_regularized(&query, &memories, beta, &fynch::SquaredL2);
+        let sparsemax = retrieve_sparsemax(&query, &memories, beta);
+        assert!(sparse
+            .iter()
+            .zip(&sparsemax)
+            .all(|(a, b)| (a - b).abs() < 1e-12));
     }
 
     #[test]
