@@ -8,6 +8,7 @@ the optimizer is enabled.
 | Recover a noisy query from a larger memory bank | `associative_recall` | `cargo run --example associative_recall --release` |
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
 | Bias retrieval scores before sparsemax | `biased_retrieval` | `cargo run --example biased_retrieval --release` |
+| Feed a gated state scan into retrieval | `state_scan_retrieval` | `cargo run --example state_scan_retrieval --release` |
 | Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
 | Retrieve through adjacent-pair structured memories | `sparsemap_structured_retrieval` | `cargo run --example sparsemap_structured_retrieval --features fynch --release` |
 | Inspect LSE vs LSR basin behavior | `basin_scan` | `cargo run --example basin_scan --release` |
