@@ -7,6 +7,7 @@ the optimizer is enabled.
 |---|---|---|
 | Recover a noisy query from a larger memory bank | `associative_recall` | `cargo run --example associative_recall --release` |
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
+| Bias retrieval scores before sparsemax | `biased_retrieval` | `cargo run --example biased_retrieval --release` |
 | Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
 | Retrieve through adjacent-pair structured memories | `sparsemap_structured_retrieval` | `cargo run --example sparsemap_structured_retrieval --features fynch --release` |
 | Inspect LSE vs LSR basin behavior | `basin_scan` | `cargo run --example basin_scan --release` |
@@ -34,6 +35,17 @@ Expected excerpt:
 memories on circle: 80, beta: 28
 LSE support > 1e-6: 24; sparsemax support > 1e-12: 4
 LSE entropy: 2.3066; sparsemax entropy: 1.3256
+```
+
+`biased_retrieval` shows that retrieval can be steered by composing score
+biases before the separation map. It combines a small topical bias with a
+max-plus graph/path bias, then applies sparsemax.
+
+Expected excerpt:
+
+```text
+base support:   [(0, 1.0)]
+biased support: [(2, 1.0)]
 ```
 
 `entmax_retrieval` uses the optional `fynch` feature to pass
