@@ -8,6 +8,7 @@ the optimizer is enabled.
 | Recover a noisy query from a larger memory bank | `associative_recall` | `cargo run --example associative_recall --release` |
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
 | Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
+| Retrieve through adjacent-pair structured memories | `sparsemap_structured_retrieval` | `cargo run --example sparsemap_structured_retrieval --features fynch --release` |
 | Inspect LSE vs LSR basin behavior | `basin_scan` | `cargo run --example basin_scan --release` |
 
 `associative_recall` is the best first example. It stores 64 deterministic
@@ -45,6 +46,18 @@ Expected excerpt:
 ```text
 support > 1e-12: lse=38, entmax15=6, sparsemax=4
 entropy: lse=2.3066, entmax15=1.3660, sparsemax=1.3256
+```
+
+`sparsemap_structured_retrieval` scores individual memories with the same
+Hopfield logits, then runs `fynch::sparsemap_explicit` over adjacent-pair
+vertices. The result is a sparse mixture over structured candidates rather than
+an independent simplex over single memories.
+
+Expected excerpt:
+
+```text
+active adjacent pairs: [(10, 11, 1.0)]
+retrieval weights > 1e-12: [(10, 0.5), (11, 0.5)]
 ```
 
 `basin_scan` samples a one-dimensional line through memory space and reports

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `entmax_retrieval` example showing `fynch::Tsallis::entmax15()` as a
   Hopfield-Fenchel-Young retrieval map.
+- `sparsemap_structured_retrieval` example showing SparseMAP over adjacent-pair
+  structured memories.
 
 ## [0.2.1] - 2026-06-26
 

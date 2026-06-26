@@ -11,7 +11,7 @@ categories = ["algorithms", "science"]
 
 [dependencies]
 # Optional: consume fynch's Fenchel-Young regularizers as Hopfield separation maps.
-fynch = { version = "0.2", optional = true }
+fynch = { version = "0.2.1", optional = true }
 
 # Optional: route the squared-L2 hot loops through innr SIMD f64 kernels.
 # Off by default, so the crate stays zero-dependency unless requested.
@@ -25,6 +25,11 @@ simd = ["dep:innr"]
 [[example]]
 name = "entmax_retrieval"
 path = "examples/entmax_retrieval.rs"
+required-features = ["fynch"]
+
+[[example]]
+name = "sparsemap_structured_retrieval"
+path = "examples/sparsemap_structured_retrieval.rs"
 required-features = ["fynch"]
 
 [workspace]
