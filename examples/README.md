@@ -9,6 +9,7 @@ the optimizer is enabled.
 | Compare dense and sparse attention support | `sparse_attention` | `cargo run --example sparse_attention --release` |
 | Bias retrieval scores before sparsemax | `biased_retrieval` | `cargo run --example biased_retrieval --release` |
 | Feed a gated state scan into retrieval | `state_scan_retrieval` | `cargo run --example state_scan_retrieval --release` |
+| Scan scalar signals with HiPPO-LegT coefficients | `hippo_legt_scan` | `cargo run --example hippo_legt_scan --release` |
 | Trace scalar energy descent during retrieval | `energy_descent_trace` | `cargo run --example energy_descent_trace --release` |
 | Compare softmax, entmax, and sparsemax retrieval | `entmax_retrieval` | `cargo run --example entmax_retrieval --features fynch --release` |
 | Retrieve through adjacent-pair structured memories | `sparsemap_structured_retrieval` | `cargo run --example sparsemap_structured_retrieval --features fynch --release` |
