@@ -3,7 +3,8 @@
 //! Softmax/LSE attention gives every memory positive mass. Sparsemax is the
 //! simplex projection used by sparse attention: low-scoring memories get exact
 //! zero weight. This example creates 80 memories on a circle and queries between
-//! two neighboring memories to show how support size changes.
+//! two neighboring memories, then reports support size, entropy, and retrieval
+//! distance.
 
 use hopfield::{lse_weights, retrieve_lse, retrieve_sparsemax, sparsemax_weights};
 

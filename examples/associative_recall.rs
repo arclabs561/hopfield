@@ -1,9 +1,8 @@
 //! Associative recall from a deterministic memory bank.
 //!
-//! This demonstrates the modern-Hopfield-as-attention view from Ramsauer et al.:
-//! a query scores all stored patterns, forms retrieval weights, and returns a
-//! weighted memory. The example uses 64 memories in 16 dimensions so top-k and
-//! retrieval distances are meaningful, not a two-point smoke test.
+//! A query scores all stored patterns, forms retrieval weights, and returns a
+//! weighted memory. The example uses 64 memories in 16 dimensions and reports
+//! nearest-memory rank, retrieval distance, and top weights.
 
 use hopfield::{lse_weights, retrieve_lse, retrieve_sparsemax, sparsemax_weights};
 

@@ -1,10 +1,8 @@
 //! MNIST pattern completion and capacity in a modern (continuous) Hopfield net.
 //!
 //! Store N images as memories, query with the bottom half occluded, retrieve.
-//! Reports, as load N grows, recall@1 (retrieved vector's nearest memory equals
-//! the original) and reconstruction L2. Modern Hopfield nets have exponential
-//! capacity (Ramsauer et al. 2020), so recall@1 holds into the hundreds where a
-//! classical Hopfield net would collapse.
+//! Reports recall@1 (retrieved vector's nearest memory equals the original)
+//! and reconstruction L2 as load N grows.
 //!
 //! ```sh
 //! ./scripts/fetch_mnist.sh

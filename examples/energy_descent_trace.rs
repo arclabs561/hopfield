@@ -1,9 +1,7 @@
 //! Trace energy descent during Hopfield retrieval.
 //!
-//! This is an `ebt` proof sketch, not an Energy-Based Transformer API. It keeps
-//! the energy model inside the existing Hopfield crate and shows the basic
-//! contract an EBT-style consumer would need: a scalar energy, its gradient,
-//! and an optimizer step that lowers the energy.
+//! Uses the crate's LSE energy and gradient helpers to print scalar energy,
+//! gradient norm, and optimizer steps during retrieval.
 //!
 //! Run: cargo run --example energy_descent_trace --release
 
