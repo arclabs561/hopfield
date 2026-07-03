@@ -63,7 +63,7 @@ See [`examples/README.md`](examples/README.md) for what each example measures.
   (arXiv:2506.10801). The log-sum-ReLU energy and exact single-step retrieval
   within the basin.
 - Santos et al., *Hopfield-Fenchel-Young Networks* (arXiv:2411.08590).
-  Generalizes the retrieval map to any Fenchel-Young regularizer; a natural
-  extension direction for this crate.
+  Generalizes the retrieval map to any Fenchel-Young regularizer; implemented
+  here as `retrieve_fy` (with typed `fynch` regularizers under the `fynch` feature).
 
 Dual-licensed under MIT or Apache-2.0.
