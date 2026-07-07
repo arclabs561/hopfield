@@ -1,5 +1,5 @@
 repository:
-  description: "Dense associative memory and modern Hopfield networks"
+  description: "Associative memory algorithms"
   topics:
     - hopfield-network
     - associative-memory

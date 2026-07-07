@@ -1,14 +1,11 @@
 # hopfield
 
-Dense associative memory and modern Hopfield networks.
+Associative memory algorithms.
 
-Energy-based content-addressable memory whose storage capacity grows
-exponentially in the pattern dimension when the stored patterns are
-well-separated (Ramsauer et al. 2021; capacity-as-spherical-codes analysis in
-Hu et al. 2024). Two energy formulations: LSE (smooth, approximate retrieval)
-and LSR (Epanechnikov kernel, exact single-step retrieval within the basin
-radius, Hoover et al. 2025). Also includes dense and sparse one-step retrieval
-maps (`retrieve_lse`, `retrieve_sparsemax`) for attention-style use.
+`hopfield` stores vectors as memories and retrieves the nearest stored pattern
+by descending an energy function. It includes LSE and LSR energies, dense and
+sparse one-step retrieval maps, and optional Fenchel-Young retrieval through
+`fynch`.
 
 ## Usage
 
@@ -55,7 +52,7 @@ See [`examples/README.md`](examples/README.md) for what each example measures.
 ## References
 
 - Ramsauer et al., *Hopfield Networks is All You Need* (arXiv:2008.02217).
-  Modern continuous Hopfield networks, LSE energy, one-step retrieval.
+  Continuous Hopfield retrieval, LSE energy, one-step retrieval.
 - Hu, Wu, and Liu, *Provably Optimal Memory Capacity for Modern Hopfield Models*
   (arXiv:2410.23126). Capacity as spherical-code packing; the precise regime
   behind "exponential capacity".
