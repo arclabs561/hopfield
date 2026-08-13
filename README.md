@@ -2,10 +2,9 @@
 
 Associative memory algorithms.
 
-`hopfield` stores vectors as memories and retrieves the nearest stored pattern
-by descending an energy function. It includes LSE and LSR energies, dense and
-sparse one-step retrieval maps, and optional Fenchel-Young retrieval through
-`fynch`.
+`hopfield` updates vector queries using energy descent or one-step weighted
+retrieval. It includes LSE and LSR energies, dense and sparse retrieval maps,
+and optional Fenchel-Young maps through `fynch`.
 
 ## Usage
 
@@ -34,7 +33,7 @@ let (retrieved, iters) = retrieve_memory(
     1e-6,  // convergence tolerance
 );
 
-// Converges to [0, 0]
+// Moves toward the first memory
 assert!(retrieved[0].abs() < 1.0);
 assert!(retrieved[1].abs() < 1.0);
 ```

@@ -67,7 +67,7 @@ retrieval.
 Output excerpt:
 
 ```text
-energy: 0.520677 -> -0.000170; distance to memory #0: 0.592368 -> 0.000313
+energy: 0.173559 -> 0.000334; distance to memory #0: 0.592368 -> 0.028235
 ```
 
 `sparsemap_structured_retrieval` scores individual memories with the same
@@ -90,7 +90,7 @@ Output excerpt:
 ```text
 memories: [0.0, 2.0, 5.0], beta: 2
 LSR finite samples: 147; infinite samples: 54
-LSR retrieval from x = 0.35: x = -0.000000 in 3 iterations
+LSR retrieval from x = 0.35: x = 0.000285 in 10 iterations
 ```
 
 `mnist_pattern_completion` uses the gitignored MNIST test images fetched by
