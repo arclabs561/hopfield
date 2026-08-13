@@ -134,15 +134,43 @@ fn single_step_sparsemax_recall_selects_stored_pattern() {
 
 #[test]
 fn energies_match_the_normalized_lse_and_lsr_definitions() {
-    let memories = vec![vec![0.0]];
-    let query = [0.5_f64];
+    // Both memories are equally distant from the query. This makes the exact
+    // energies and gradients simple enough to derive independently while
+    // still exercising the kernel sum and its normalization.
+    let memories = vec![vec![0.0, 0.0], vec![1.0, 0.0]];
+    let query = [0.5_f64, -0.25];
     let beta = 4.0;
 
-    let expected_lse = 0.5 * query[0] * query[0];
-    let expected_lsr = -(1.0 / beta) * (1.0 - 0.5 * beta * query[0] * query[0]).ln();
+    // Squared distance to either memory is 5/16. The LSE kernel sum is
+    // 2 exp(-5/8), and each LSR kernel value is 3/8.
+    let expected_lse = 5.0 / 32.0 - 2.0_f64.ln() / beta;
+    let expected_lsr = -(0.75_f64.ln()) / beta;
+    let expected_lse_grad = [0.0, -0.25];
+    let expected_lsr_grad = [0.0, -2.0 / 3.0];
 
     assert!((energy_lse(&query, &memories, beta) - expected_lse).abs() < 1e-12);
     assert!((energy_lsr(&query, &memories, beta) - expected_lsr).abs() < 1e-12);
+    for (actual, expected) in energy_lse_grad(&query, &memories, beta)
+        .iter()
+        .zip(expected_lse_grad)
+    {
+        assert!((actual - expected).abs() < 1e-12);
+    }
+    for (actual, expected) in energy_lsr_grad(&query, &memories, beta)
+        .iter()
+        .zip(expected_lsr_grad)
+    {
+        assert!((actual - expected).abs() < 1e-12);
+    }
+}
+
+#[test]
+fn gradients_reject_non_positive_or_non_finite_inverse_temperature() {
+    let memories = vec![vec![0.0]];
+    for beta in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+        assert!(std::panic::catch_unwind(|| energy_lse_grad(&[0.5], &memories, beta)).is_err());
+        assert!(std::panic::catch_unwind(|| energy_lsr_grad(&[0.5], &memories, beta)).is_err());
+    }
 }
 
 #[test]

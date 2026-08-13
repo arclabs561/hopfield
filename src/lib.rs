@@ -389,6 +389,10 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];
     }
+    assert!(
+        beta > 0.0 && beta.is_finite(),
+        "beta must be finite and positive"
+    );
 
     let d = v.len();
     let weights = lse_weights(v, memories, beta);
@@ -479,6 +483,10 @@ pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];
     }
+    assert!(
+        beta > 0.0 && beta.is_finite(),
+        "beta must be finite and positive"
+    );
 
     let d = v.len();
     let half_beta = 0.5 * beta;
