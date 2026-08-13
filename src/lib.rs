@@ -235,7 +235,8 @@ pub fn retrieve_sparsemax(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f6
 /// One-step Hopfield-Fenchel-Young retrieval, generalized over the separation map.
 ///
 /// Every retrieval here factors as *similarity then separation then projection*:
-/// `retrieve(v) = Xᵀ · separation(β · similarity_logits(v))`. The built-in
+/// `retrieve(v) = Xᵀ · separation(similarity_logits(v))`, where the logits
+/// already include the inverse-temperature factor `β`. The built-in
 /// retrievers fix the separation map: [`retrieve_lse`] uses [`softmax`],
 /// [`retrieve_sparsemax`] uses [`sparsemax`]. This function takes the separation
 /// map as an argument, which is the Hopfield-Fenchel-Young generalization: any
@@ -310,7 +311,7 @@ where
 
 /// Log-Sum-Exp (LSE) energy for Dense Associative Memory.
 ///
-/// E_β(v; Ξ) = -log Σ_μ exp(-β/2 ||v - ξ^μ||²)
+/// E_β(v; Ξ) = -(1/β) log Σ_μ exp(-β/2 ||v - ξ^μ||²)
 ///
 /// This corresponds to RBF kernel with log scaling. The gradient points toward
 /// a weighted average of memories, with weights given by softmax over similarities.
@@ -348,6 +349,10 @@ pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
     }
+    assert!(
+        beta > 0.0 && beta.is_finite(),
+        "beta must be finite and positive"
+    );
 
     // For numerical stability, use log-sum-exp trick:
     // log(Σ exp(x_i)) = max(x) + log(Σ exp(x_i - max(x)))
@@ -369,7 +374,7 @@ pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
 
     let sum_exp: f64 = log_terms.iter().map(|&t| (t - max_term).exp()).sum();
 
-    -(max_term + sum_exp.ln())
+    -(max_term + sum_exp.ln()) / beta
 }
 
 /// Gradient of LSE energy: ∇_v E_LSE(v; Ξ)
@@ -388,7 +393,7 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
     let d = v.len();
     let weights = lse_weights(v, memories, beta);
 
-    // Gradient: β Σ_μ w_μ (v - ξ^μ)
+    // Gradient: Σ_μ w_μ (v - ξ^μ)
     let mut grad = vec![0.0; d];
     for (mu, xi) in memories.iter().enumerate() {
         let w = weights[mu];
@@ -397,16 +402,12 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
         }
     }
 
-    for g in &mut grad {
-        *g *= beta;
-    }
-
     grad
 }
 
 /// Log-Sum-ReLU (LSR) energy for Dense Associative Memory with Epanechnikov kernel.
 ///
-/// E_β(v; Ξ) = -log Σ_μ ReLU(1 - β/2 ||v - ξ^μ||²)
+/// E_β(v; Ξ) = -(1/β) log Σ_μ ReLU(1 - β/2 ||v - ξ^μ||²)
 ///
 /// Based on the Epanechnikov kernel, which is optimal for density estimation (MISE).
 ///
@@ -445,6 +446,10 @@ pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
     }
+    assert!(
+        beta > 0.0 && beta.is_finite(),
+        "beta must be finite and positive"
+    );
 
     let half_beta = 0.5 * beta;
 
@@ -459,7 +464,7 @@ pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if sum <= 0.0 {
         f64::INFINITY // Outside support of all memories
     } else {
-        -sum.ln()
+        -sum.ln() / beta
     }
 }
 
@@ -493,7 +498,7 @@ pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
         return vec![0.0; d]; // Outside support
     }
 
-    // Gradient: (β / Σκ) × Σ_μ 1[κ_μ > 0] (v - ξ^μ)
+    // Gradient: (1 / Σκ) × Σ_μ 1[κ_μ > 0] (v - ξ^μ)
     let mut grad = vec![0.0; d];
     for (mu, xi) in memories.iter().enumerate() {
         if kernel_vals[mu] > 0.0 {
@@ -503,7 +508,7 @@ pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
         }
     }
 
-    let scale = beta / sum;
+    let scale = 1.0 / sum;
     for g in &mut grad {
         *g *= scale;
     }
@@ -746,15 +751,21 @@ mod tests {
         // Query well within first basin (dist = 0.1 < 1.0)
         let query = vec![0.1, 0.0];
 
-        // Compute gradient
-        let grad = energy_lsr_grad(&query, &memories, beta);
+        // With one active memory, the normalized gradient is
+        // (query - memory) / kernel_value. Choosing that kernel value as the
+        // learning rate therefore retrieves the memory in exactly one step.
+        let kernel_value = 1.0 - 0.5 * beta * 0.1_f64.powi(2);
+        let (retrieved, iterations) = retrieve_memory(
+            query,
+            &memories,
+            |v, m| energy_lsr_grad(v, m, beta),
+            kernel_value,
+            1,
+            0.0,
+        );
 
-        // Theorem 1 suggests η = 1/β for single-step retrieval in some cases,
-        // but let's verify if gradient points exactly toward memory.
-        // Gradient should be proportional to (query - memory).
-        // grad = (beta / sum) * (query - memory)
-        assert!(grad[0] > 0.0);
-        assert!((grad[1] - 0.0).abs() < 1e-10);
+        assert_eq!(iterations, 1);
+        assert!(retrieved.iter().all(|coordinate| coordinate.abs() < 1e-15));
     }
 
     #[test]
