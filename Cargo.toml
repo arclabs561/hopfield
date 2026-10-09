@@ -8,6 +8,7 @@ description = "Associative memory algorithms"
 repository = "https://github.com/arclabs561/hopfield"
 keywords = ["hopfield", "associative-memory", "attention", "energy-based", "pattern-retrieval"]
 categories = ["algorithms", "science"]
+include = ["/src", "/examples", "/README.md", "/CHANGELOG.md", "/LICENSE*"]
 
 [dependencies]
 # Optional: consume fynch's Fenchel-Young regularizers as Hopfield separation maps.
