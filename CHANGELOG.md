@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `dot_product_weights` and `retrieve_dot_product`: the dot-product update of
+  Ramsauer et al. (2020), Eq. 3.
+
 ### Fixed
+- Docs no longer describe the distance-based LSE retrieval as Ramsauer's
+  network; the two agree only for equal-norm memories.
 - Normalize LSE and LSR energies by inverse temperature, keeping their
   analytical gradients consistent with the documented definitions.
 

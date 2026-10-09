@@ -51,7 +51,9 @@ See [`examples/README.md`](examples/README.md) for what each example measures.
 ## References
 
 - Ramsauer et al., *Hopfield Networks is All You Need* (arXiv:2008.02217).
-  Continuous Hopfield retrieval, LSE energy, one-step retrieval.
+  The Eq. 3 dot-product update is `retrieve_dot_product`. The LSE energy and
+  `retrieve_lse` here are the distance-based variant, which matches Eq. 3 only
+  when every memory has the same norm.
 - Hu, Wu, and Liu, *Provably Optimal Memory Capacity for Modern Hopfield Models*
   (arXiv:2410.23126). Capacity as spherical-code packing; the precise regime
   behind "exponential capacity".

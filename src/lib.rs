@@ -1,8 +1,12 @@
+#![doc = include_str!("../README.md")]
 //! Dense associative memory and modern Hopfield networks.
 //!
 //! Energy-based content-addressable memory with connections to attention
-//! mechanisms and kernel methods. Implements the continuous Hopfield network
-//! (Ramsauer et al. 2021) with exponential storage capacity.
+//! mechanisms and kernel methods. The LSE energy and [`retrieve_lse`] are the
+//! distance-based (Gaussian-kernel) dense associative memory, inspired by the
+//! continuous Hopfield network of Ramsauer et al. (2020). Ramsauer's update
+//! (Eq. 3) uses dot-product similarity instead; the two agree only when every
+//! memory has the same norm. [`retrieve_dot_product`] implements Eq. 3.
 //!
 //! ## Energy Functions
 //!
@@ -26,6 +30,7 @@
 //! | [`sparsemax_weights`] | Sparse attention weights over memories |
 //! | [`retrieve_lse`] | One-step LSE memory retrieval |
 //! | [`retrieve_sparsemax`] | One-step sparse memory retrieval |
+//! | [`retrieve_dot_product`] | One-step dot-product retrieval (Ramsauer Eq. 3) |
 //! | [`retrieve_memory`] | Energy descent retrieval loop |
 //!
 //! ## Example
@@ -230,6 +235,39 @@ pub fn retrieve_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
 /// One-step sparsemax retrieval as a sparse weighted average of memories.
 pub fn retrieve_sparsemax(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     weighted_memory(memories, &sparsemax_weights(v, memories, beta))
+}
+
+/// Dot-product retrieval weights: `softmax(beta * X^T v)`.
+///
+/// These are the weights of Ramsauer et al. (2020, arXiv:2008.02217), Eq. 3.
+/// [`lse_weights`] instead uses `-beta / 2 * ||v - xi||^2`, which equals
+/// `beta * xi^T v - beta / 2 * ||xi||^2` up to a constant, so the two agree
+/// only when every memory has the same norm.
+pub fn dot_product_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    let logits: Vec<f64> = memories
+        .iter()
+        .map(|xi| beta * xi.iter().zip(v).map(|(a, b)| a * b).sum::<f64>())
+        .collect();
+    softmax(&logits)
+}
+
+/// One-step retrieval of the modern Hopfield network of Ramsauer et al.
+/// (2020, arXiv:2008.02217), Eq. 3: `X softmax(beta * X^T v)`.
+///
+/// Unlike [`retrieve_lse`], larger-norm memories receive more weight.
+///
+/// # Example
+///
+/// ```rust
+/// use hopfield::retrieve_dot_product;
+///
+/// let memories = vec![vec![1.0, 0.0], vec![3.0, 3.0]];
+/// let retrieved = retrieve_dot_product(&[1.0, 0.2], &memories, 1.0);
+/// assert!((retrieved[0] - 2.862).abs() < 1e-3);
+/// assert!((retrieved[1] - 2.793).abs() < 1e-3);
+/// ```
+pub fn retrieve_dot_product(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
+    weighted_memory(memories, &dot_product_weights(v, memories, beta))
 }
 
 /// One-step Hopfield-Fenchel-Young retrieval, generalized over the separation map.
@@ -703,6 +741,39 @@ mod tests {
     }
 
     #[test]
+    fn dot_product_retrieval_is_ramsauer_eq3() {
+        // Ramsauer et al. Eq. 3: xi_new = X softmax(beta X^T xi), computed by hand.
+        let memories = vec![vec![1.0, 0.0], vec![3.0, 3.0]];
+        let query = [1.0, 0.2];
+        let logits = [1.0_f64, 3.6_f64];
+        let z = logits[0].exp() + logits[1].exp();
+        let (w0, w1) = (logits[0].exp() / z, logits[1].exp() / z);
+        let want = [w0 * 1.0 + w1 * 3.0, w1 * 3.0];
+
+        let got = retrieve_dot_product(&query, &memories, 1.0);
+        assert!((got[0] - want[0]).abs() < 1e-12 && (got[1] - want[1]).abs() < 1e-12);
+        // The distance-based retrieval weights the nearer, smaller memory instead.
+        assert!(retrieve_lse(&query, &memories, 1.0)[0] < 1.1);
+    }
+
+    #[test]
+    fn dot_product_and_distance_retrieval_agree_for_equal_norm_memories() {
+        let memories = vec![vec![1.0, 0.0], vec![0.0, 1.0], vec![-0.6, 0.8]];
+        let query = [0.3, -0.7];
+        let dot = retrieve_dot_product(&query, &memories, 2.5);
+        let lse = retrieve_lse(&query, &memories, 2.5);
+        for (a, b) in dot.iter().zip(&lse) {
+            assert!((a - b).abs() < 1e-12, "{dot:?} vs {lse:?}");
+        }
+    }
+
+    #[test]
+    fn sparsemax_with_nan_logits_does_not_panic() {
+        let weights = sparsemax(&[0.5, f64::NAN, 1.0, f64::NAN, -2.0]);
+        assert_eq!(weights.len(), 5);
+    }
+
+    #[test]
     fn test_retrieve_fy_hardmax_returns_nearest_memory() {
         // A hardmax separation map (one-hot at the argmax logit) is a valid
         // Fenchel-Young map the built-in retrievers don't provide; it gives
@@ -715,7 +786,7 @@ mod tests {
             let argmax = logits
                 .iter()
                 .enumerate()
-                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .max_by(|(_, a), (_, b)| a.total_cmp(b))
                 .map(|(i, _)| i)
                 .unwrap();
             (0..logits.len())
