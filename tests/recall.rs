@@ -15,7 +15,8 @@
 //! rather than re-implementing the dynamics.
 
 use hopfield::{
-    energy_lse, energy_lse_grad, energy_lsr, energy_lsr_grad, retrieve_memory, retrieve_sparsemax,
+    energy_lse, energy_lse_grad, energy_lsr, energy_lsr_grad, retrieve_lse, retrieve_memory,
+    retrieve_sparsemax,
 };
 
 const BETA: f64 = 2.0;
@@ -262,6 +263,34 @@ fn safe_gradient_steps_do_not_increase_energy() {
             let current = energy(&point, &memories, beta);
             assert!(current <= previous + 1e-12, "{current} > {previous}");
             previous = current;
+        }
+    }
+}
+
+/// One-step LSE retrieval is the Gaussian mean-shift update, a majorize-minimize
+/// step on the LSE energy, so the energy can never increase along it. Overlapping
+/// memories and a moderate beta keep many memories active at once.
+#[test]
+fn lse_energy_never_increases_along_retrieval() {
+    let memories: Vec<Vec<f64>> = (0..12)
+        .map(|i| {
+            let t = i as f64;
+            vec![(t * 0.9).sin() * 2.0, (t * 1.7).cos() * 1.5, t * 0.15 - 0.8]
+        })
+        .collect();
+    for beta in [0.3, 1.0, 4.0] {
+        for start in [[3.0, -2.0, 1.0], [0.1, 0.2, 0.3], [-4.0, 4.0, -1.0]] {
+            let mut v = start.to_vec();
+            let mut energy = energy_lse(&v, &memories, beta);
+            for step in 0..60 {
+                v = retrieve_lse(&v, &memories, beta);
+                let next = energy_lse(&v, &memories, beta);
+                assert!(
+                    next <= energy + 1e-12,
+                    "beta {beta}, start {start:?}, step {step}: {energy} -> {next}"
+                );
+                energy = next;
+            }
         }
     }
 }
