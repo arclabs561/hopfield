@@ -10,7 +10,7 @@ and optional Fenchel-Young maps through `fynch`.
 
 ```toml
 [dependencies]
-hopfield = "0.2.2"
+hopfield = "0.3.0"
 ```
 
 ```rust

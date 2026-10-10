@@ -7,15 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-09
+
 ### Added
 - `dot_product_weights` and `retrieve_dot_product`: the dot-product update of
   Ramsauer et al. (2020), Eq. 3.
 
+### Changed
+- Normalize LSE and LSR energies by inverse temperature, keeping their
+  analytical gradients consistent with the documented definitions.
+  `energy_lse`, `energy_lsr`, `energy_lse_grad` and `energy_lsr_grad` now
+  return `1 / beta` times their previous values; results at `beta = 1` are
+  unchanged.
+- `energy_lse`, `energy_lsr`, `energy_lse_grad` and `energy_lsr_grad` panic
+  when `beta` is not finite and positive; empty inputs still return early
+  without checking `beta`.
+
 ### Fixed
 - Docs no longer describe the distance-based LSE retrieval as Ramsauer's
   network; the two agree only for equal-norm memories.
-- Normalize LSE and LSR energies by inverse temperature, keeping their
-  analytical gradients consistent with the documented definitions.
 
 ## [0.2.2] - 2026-06-26
 
