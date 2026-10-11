@@ -51,5 +51,7 @@ jobs:
           tool: cargo-nextest
       - name: nextest
         run: cargo nextest run
+      - name: nextest (all features)
+        run: cargo nextest run --all-features
       - name: doc tests
         run: cargo test --doc

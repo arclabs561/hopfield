@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The optional `fynch` dependency now requires 0.3.2 (was 0.2.1). The built-in
+  `sparsemax` stays local so the default build has no dependencies; a test
+  under the `fynch` feature checks it against `fynch::sparsemax`.
+
 ## [0.3.0] - 2026-10-09
 
 ### Added

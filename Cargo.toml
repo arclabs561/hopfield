@@ -12,7 +12,7 @@ include = ["/src", "/examples", "/README.md", "/CHANGELOG.md", "/LICENSE*"]
 
 [dependencies]
 # Optional: consume fynch's Fenchel-Young regularizers as Hopfield separation maps.
-fynch = { version = "0.2.1", optional = true }
+fynch = { version = "0.3.2", optional = true }
 
 # Optional: route the squared-L2 hot loops through innr SIMD f64 kernels.
 # Off by default, so the crate stays zero-dependency unless requested.

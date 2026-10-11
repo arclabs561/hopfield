@@ -802,6 +802,50 @@ mod tests {
         );
     }
 
+    /// The local sparsemax stays so the default build has no dependencies;
+    /// this pins it to fynch's on finite logits, including ties.
+    #[cfg(feature = "fynch")]
+    #[test]
+    fn sparsemax_matches_fynch_on_finite_logits() {
+        let mut cases: Vec<Vec<f64>> = vec![
+            vec![1.0, 1.0, 0.0],
+            vec![0.3],
+            vec![2.0, 2.0, 2.0, 2.0],
+            vec![-1.0, 0.5, 0.5, 3.0, -7.0],
+            vec![0.1, 0.2, 0.15, 0.05],
+            vec![1e6, -1e6, 1e6 - 0.5],
+            vec![-40.0, -40.5, -41.0, -60.0],
+        ];
+        // Deterministic pseudo-random logits at several scales.
+        let mut state = 0x2545_f491_4f6c_dd1d_u64;
+        for len in 2..12 {
+            for scale in [0.1, 1.0, 10.0] {
+                cases.push(
+                    (0..len)
+                        .map(|_| {
+                            state ^= state << 13;
+                            state ^= state >> 7;
+                            state ^= state << 17;
+                            ((state >> 11) as f64 / (1u64 << 53) as f64 - 0.5) * scale
+                        })
+                        .collect(),
+                );
+            }
+        }
+
+        for logits in &cases {
+            let local = sparsemax(logits);
+            let reference = fynch::sparsemax(logits);
+            assert_eq!(local.len(), reference.len());
+            for (a, b) in local.iter().zip(&reference) {
+                assert!(
+                    (a - b).abs() < 1e-12,
+                    "{logits:?}: {local:?} vs {reference:?}"
+                );
+            }
+        }
+    }
+
     #[cfg(feature = "fynch")]
     #[test]
     fn test_fynch_regularizers_recover_builtin_retrievers() {
