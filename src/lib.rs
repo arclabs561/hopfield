@@ -383,6 +383,10 @@ where
 ///
 /// assert!(e_at_memory < e_between);
 /// ```
+///
+/// # Panics
+///
+/// Panics if `memories` is nonempty and `beta` is not finite and positive.
 pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
@@ -423,6 +427,10 @@ pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
 /// # Returns
 ///
 /// Gradient vector of same dimension as v
+///
+/// # Panics
+///
+/// Panics if both `memories` and `v` are nonempty and `beta` is not finite and positive.
 pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];
@@ -484,6 +492,10 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
 /// assert!(e_at.is_finite());
 /// assert!(e_far.is_infinite());
 /// ```
+///
+/// # Panics
+///
+/// Panics if `memories` is nonempty and `beta` is not finite and positive.
 pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
@@ -517,6 +529,10 @@ pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
 /// # Returns
 ///
 /// Gradient vector. Returns zero vector if outside all support regions.
+///
+/// # Panics
+///
+/// Panics if both `memories` and `v` are nonempty and `beta` is not finite and positive.
 pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];

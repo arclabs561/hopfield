@@ -38,6 +38,12 @@ assert!(retrieved[0].abs() < 1.0);
 assert!(retrieved[1].abs() < 1.0);
 ```
 
+## Features and Rust version
+
+The default build requires Rust 1.75. The optional `fynch` feature provides
+Fenchel-Young regularizers and requires Rust 1.82. The optional `simd` feature
+uses `innr` for squared-distance kernels.
+
 ## Examples
 
 ```bash
