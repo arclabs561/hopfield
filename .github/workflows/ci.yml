@@ -36,18 +36,24 @@ jobs:
       - run: cargo check --all-targets
 
   msrv:
-    # Checks the declared rust-version for the default build. The optional
-    # `fynch` feature needs 1.82 (fynch's own MSRV), so it is not checked here.
+    name: MSRV (${{ matrix.toolchain }}, ${{ matrix.features || 'default' }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - toolchain: "1.75"
+            features: ""
+          - toolchain: "1.82"
+            features: "fynch"
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
-          toolchain: "1.75"
+          toolchain: ${{ matrix.toolchain }}
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - run: cargo check --lib
+      - run: cargo check --lib --features "${{ matrix.features }}"
 
   test:
     runs-on: ubuntu-latest
