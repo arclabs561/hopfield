@@ -4,7 +4,8 @@ Associative memory algorithms.
 
 `hopfield` updates vector queries using energy descent or one-step weighted
 retrieval. It includes LSE and LSR energies, dense and sparse retrieval maps,
-and optional Fenchel-Young maps through `fynch`.
+and Fenchel-Young retrieval (`retrieve_fy`), with typed regularizers from
+`fynch` behind the `fynch` feature.
 
 ## Usage
 
@@ -60,9 +61,6 @@ See [`examples/README.md`](examples/README.md) for what each example measures.
   The Eq. 3 dot-product update is `retrieve_dot_product`. The LSE energy and
   `retrieve_lse` here are the distance-based variant, which matches Eq. 3 only
   when every memory has the same norm.
-- Hu, Wu, and Liu, *Provably Optimal Memory Capacity for Modern Hopfield Models*
-  (arXiv:2410.23126). Capacity as spherical-code packing; the precise regime
-  behind "exponential capacity".
 - Hoover et al., *Dense Associative Memory with Epanechnikov Energy*
   (arXiv:2506.10801). The log-sum-ReLU energy and exact single-step retrieval
   within the basin.
