@@ -16,6 +16,8 @@ These entries identify source changes without assigning a package release.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-04
+
 ### Changed
 
 - The optional `fynch` dependency now requires 0.3.2 (was 0.2.1). The built-in
