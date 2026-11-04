@@ -11,7 +11,7 @@ and Fenchel-Young retrieval (`retrieve_fy`), with typed regularizers from
 
 ```toml
 [dependencies]
-hopfield = "0.3.0"
+hopfield = "0.4"
 ```
 
 ```rust

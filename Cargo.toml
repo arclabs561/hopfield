@@ -1,6 +1,6 @@
 [package]
 name = "hopfield"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 # Default features. The optional `fynch` feature needs Rust 1.82 (fynch's MSRV).
 rust-version = "1.75"
