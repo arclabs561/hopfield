@@ -174,6 +174,20 @@ fn gradients_reject_non_positive_or_non_finite_inverse_temperature() {
     }
 }
 
+/// `||v - xi||^2` is undefined when the query and a memory differ in length.
+/// Scoring only the shared prefix gave a 3-D query 1e6 away from both 2-D
+/// memories the energy of a query sitting on a memory.
+#[test]
+fn query_memory_dimension_mismatch_panics() {
+    let memories = vec![vec![0.0, 0.0], vec![10.0, 10.0]];
+    let query = [0.0, 0.0, 1e6];
+    assert!(std::panic::catch_unwind(|| energy_lse(&query, &memories, 1.0)).is_err());
+    assert!(std::panic::catch_unwind(|| energy_lsr(&query, &memories, 1.0)).is_err());
+    assert!(std::panic::catch_unwind(|| energy_lse_grad(&query, &memories, 1.0)).is_err());
+    assert!(std::panic::catch_unwind(|| energy_lsr_grad(&query, &memories, 1.0)).is_err());
+    assert!(std::panic::catch_unwind(|| retrieve_lse(&query, &memories, 1.0)).is_err());
+}
+
 #[test]
 fn fenchel_young_retrieval_applies_beta_exactly_once() {
     let memories = vec![vec![0.0], vec![2.0]];

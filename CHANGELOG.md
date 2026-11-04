@@ -22,6 +22,17 @@ These entries identify source changes without assigning a package release.
   `sparsemax` stays local so the default build has no dependencies; a test
   under the `fynch` feature checks it against `fynch::sparsemax`.
 
+### Fixed
+
+- `energy_lse`, `energy_lsr`, their gradients, and the distance-based weights
+  and retrieval functions panic when the query and a memory differ in length.
+  They scored only the shorter prefix, so a mismatched query could get a
+  finite, wrong energy.
+- `sparsemax` panics on NaN or `+inf` logits. Either returned the all-zero
+  vector, which is not on the simplex. `-inf` still masks an entry; all `-inf` logits return the zero
+  vector, now documented. `sparsemax_weights` and `retrieve_sparsemax` panic
+  on the same inputs (for example a NaN query).
+
 ## [0.3.0] - 2026-10-09
 
 ### Added

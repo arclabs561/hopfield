@@ -60,8 +60,12 @@
 /// dispatches to innr's SIMD f64 kernel (AVX-512/AVX2/NEON) for higher
 /// dimensions; otherwise it is a portable scalar loop. Behaviour is
 /// identical either way.
+///
+/// Panics if `v` and `xi` differ in length: both the scalar loop and innr
+/// would otherwise score only the shorter prefix.
 #[inline]
 fn l2_sq(v: &[f64], xi: &[f64]) -> f64 {
+    assert_eq!(v.len(), xi.len(), "query and memory dimensions differ");
     #[cfg(feature = "simd")]
     {
         innr::dense_f64::l2_distance_squared_f64(v, xi)
@@ -146,6 +150,10 @@ pub fn softmax(logits: &[f64]) -> Vec<f64> {
 /// softmax, it can assign exact zero weight to low-scoring memories, making the
 /// retrieval set explicit.
 ///
+/// A `-inf` logit masks its entry: it gets weight 0. If every logit is
+/// `-inf`, there is no point of the simplex to project onto and the result is
+/// the zero vector.
+///
 /// # Example
 ///
 /// ```rust
@@ -154,10 +162,19 @@ pub fn softmax(logits: &[f64]) -> Vec<f64> {
 /// let weights = sparsemax(&[1.0, 1.0, 0.0]);
 /// assert_eq!(weights, vec![0.5, 0.5, 0.0]);
 /// ```
+///
+/// # Panics
+///
+/// Panics if any logit is NaN or `+inf`; the projection is defined only for
+/// real logits (and `-inf` as a mask).
 pub fn sparsemax(logits: &[f64]) -> Vec<f64> {
     if logits.is_empty() {
         return Vec::new();
     }
+    assert!(
+        logits.iter().all(|&z| z < f64::INFINITY),
+        "logits must not be NaN or +inf"
+    );
 
     let mut sorted = logits.to_vec();
     sorted.sort_by(|a, b| b.total_cmp(a));
@@ -172,6 +189,9 @@ pub fn sparsemax(logits: &[f64]) -> Vec<f64> {
         }
     }
 
+    // For a real largest logit z, k = 1 qualifies (1 + z > z), so this branch
+    // means every entry is masked (-inf). Rounding can also reach it once
+    // 1 + z == z, for logits around 2^53 and above.
     if support == 0 {
         return vec![0.0; logits.len()];
     }
@@ -192,6 +212,10 @@ fn similarity_logits(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
 ///
 /// The logits are `-beta / 2 * ||v - xi||^2`, then softmaxed. These are the
 /// same weights used by [`energy_lse_grad`].
+///
+/// # Panics
+///
+/// Panics if a memory's dimension differs from `v`'s.
 pub fn lse_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     softmax(&similarity_logits(v, memories, beta))
 }
@@ -200,6 +224,11 @@ pub fn lse_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
 ///
 /// The logits match [`lse_weights`], but sparsemax projects them onto the
 /// simplex with exact zeros for low-scoring memories.
+///
+/// # Panics
+///
+/// Panics if a memory's dimension differs from `v`'s, or if a logit is NaN
+/// or `+inf` (for example from a NaN in `v`), as [`sparsemax`] does.
 pub fn sparsemax_weights(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     sparsemax(&similarity_logits(v, memories, beta))
 }
@@ -228,11 +257,19 @@ pub fn weighted_memory(memories: &[Vec<f64>], weights: &[f64]) -> Vec<f64> {
 }
 
 /// One-step LSE retrieval as a dense weighted average of memories.
+///
+/// # Panics
+///
+/// Panics under the same conditions as [`lse_weights`].
 pub fn retrieve_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     weighted_memory(memories, &lse_weights(v, memories, beta))
 }
 
 /// One-step sparsemax retrieval as a sparse weighted average of memories.
+///
+/// # Panics
+///
+/// Panics under the same conditions as [`sparsemax_weights`].
 pub fn retrieve_sparsemax(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     weighted_memory(memories, &sparsemax_weights(v, memories, beta))
 }
@@ -386,7 +423,8 @@ where
 ///
 /// # Panics
 ///
-/// Panics if `memories` is nonempty and `beta` is not finite and positive.
+/// Panics if `memories` is nonempty and `beta` is not finite and positive, or
+/// if `v` and a memory differ in length.
 pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
@@ -430,7 +468,8 @@ pub fn energy_lse(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
 ///
 /// # Panics
 ///
-/// Panics if both `memories` and `v` are nonempty and `beta` is not finite and positive.
+/// Panics if both `memories` and `v` are nonempty and either `beta` is not
+/// finite and positive or `v` and a memory differ in length.
 pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];
@@ -495,7 +534,8 @@ pub fn energy_lse_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> 
 ///
 /// # Panics
 ///
-/// Panics if `memories` is nonempty and `beta` is not finite and positive.
+/// Panics if `memories` is nonempty and `beta` is not finite and positive, or
+/// if `v` and a memory differ in length.
 pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
     if memories.is_empty() {
         return 0.0;
@@ -532,7 +572,8 @@ pub fn energy_lsr(v: &[f64], memories: &[Vec<f64>], beta: f64) -> f64 {
 ///
 /// # Panics
 ///
-/// Panics if both `memories` and `v` are nonempty and `beta` is not finite and positive.
+/// Panics if both `memories` and `v` are nonempty and either `beta` is not
+/// finite and positive or `v` and a memory differ in length.
 pub fn energy_lsr_grad(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
     if memories.is_empty() || v.is_empty() {
         return vec![0.0; v.len()];
@@ -784,9 +825,21 @@ mod tests {
     }
 
     #[test]
-    fn sparsemax_with_nan_logits_does_not_panic() {
-        let weights = sparsemax(&[0.5, f64::NAN, 1.0, f64::NAN, -2.0]);
-        assert_eq!(weights.len(), 5);
+    fn sparsemax_rejects_nan_and_positive_infinite_logits() {
+        // Sparsemax projects real logits onto the simplex. NaN and +inf used
+        // to fall through to an all-zero vector, which is off the simplex.
+        for logits in [[0.5, f64::NAN, 1.0], [f64::INFINITY, 0.0, 1.0]] {
+            assert!(std::panic::catch_unwind(|| sparsemax(&logits)).is_err());
+        }
+    }
+
+    #[test]
+    fn sparsemax_masks_negative_infinite_logits() {
+        assert_eq!(sparsemax(&[0.0, f64::NEG_INFINITY]), vec![1.0, 0.0]);
+        assert_eq!(
+            sparsemax(&[f64::NEG_INFINITY, f64::NEG_INFINITY]),
+            vec![0.0, 0.0]
+        );
     }
 
     #[test]
