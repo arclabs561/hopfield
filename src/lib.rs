@@ -176,28 +176,28 @@ pub fn sparsemax(logits: &[f64]) -> Vec<f64> {
         "logits must not be NaN or +inf"
     );
 
-    let mut sorted = logits.to_vec();
-    sorted.sort_by(|a, b| b.total_cmp(a));
-
-    let mut cumsum = 0.0;
-    let mut support = 0;
-    for (i, z) in sorted.iter().enumerate() {
-        cumsum += z;
-        let k = i + 1;
-        if 1.0 + (k as f64) * z > cumsum {
-            support = k;
-        }
-    }
-
-    // For a real largest logit z, k = 1 qualifies (1 + z > z), so this branch
-    // means every entry is masked (-inf). Rounding can also reach it once
-    // 1 + z == z, for logits around 2^53 and above.
-    if support == 0 {
+    // A common shift preserves the simplex projection. Subtract it before
+    // the support test so that its unit offset survives at large magnitudes.
+    let max_logit = logits.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    if max_logit == f64::NEG_INFINITY {
         return vec![0.0; logits.len()];
     }
+    let mut sorted: Vec<_> = logits.iter().map(|&z| z - max_logit).collect();
+    sorted.sort_by(|a, b| b.total_cmp(a));
 
-    let tau = (sorted.iter().take(support).sum::<f64>() - 1.0) / support as f64;
-    logits.iter().map(|&z| (z - tau).max(0.0)).collect()
+    let mut sum = 0.0;
+    let mut tau = -1.0;
+    for (i, &z) in sorted.iter().enumerate() {
+        if z <= tau {
+            break;
+        }
+        sum += z;
+        tau = (sum - 1.0) / (i + 1) as f64;
+    }
+    logits
+        .iter()
+        .map(|&z| (z - max_logit - tau).max(0.0))
+        .collect()
 }
 
 fn similarity_logits(v: &[f64], memories: &[Vec<f64>], beta: f64) -> Vec<f64> {
@@ -831,6 +831,19 @@ mod tests {
         for logits in [[0.5, f64::NAN, 1.0], [f64::INFINITY, 0.0, 1.0]] {
             assert!(std::panic::catch_unwind(|| sparsemax(&logits)).is_err());
         }
+    }
+
+    #[test]
+    fn sparsemax_preserves_simplex_mass_at_large_offsets() {
+        let two_to_53 = 9_007_199_254_740_992.0;
+        for shift in [two_to_53, -two_to_53, f64::MAX, -f64::MAX] {
+            assert_eq!(sparsemax(&[shift, shift]), vec![0.5, 0.5]);
+            assert_eq!(
+                sparsemax(&[f64::NEG_INFINITY, shift, shift]),
+                vec![0.0, 0.5, 0.5]
+            );
+        }
+        assert_eq!(sparsemax(&[-f64::MAX, f64::MAX]), vec![0.0, 1.0]);
     }
 
     #[test]
