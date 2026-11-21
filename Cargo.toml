@@ -25,6 +25,10 @@ fynch = ["dep:fynch"]
 simd = ["dep:innr"]
 
 [[example]]
+name = "associative_recall"
+test = true
+
+[[example]]
 name = "entmax_retrieval"
 path = "examples/entmax_retrieval.rs"
 required-features = ["fynch"]
