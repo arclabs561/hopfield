@@ -55,9 +55,61 @@ fn top_weights(weights: &[f64], k: usize) -> Vec<(usize, f64)> {
     ranked
 }
 
-fn main() {
-    let memories: Vec<Vec<f64>> = (0..N_MEMORIES).map(pattern).collect();
-    let query = corrupt(&memories[TARGET]);
+fn unit_vector(text: &str) -> Result<Vec<f64>, String> {
+    let mut values: Vec<f64> = text
+        .split_whitespace()
+        .map(|word| {
+            word.parse::<f64>()
+                .map_err(|_| format!("invalid coordinate {word:?}"))
+        })
+        .collect::<Result<_, _>>()?;
+    if values.is_empty() || values.iter().any(|x| !x.is_finite()) {
+        return Err("expected finite coordinates".into());
+    }
+    let scale = values.iter().map(|x| x.abs()).fold(0.0, f64::max);
+    if scale == 0.0 {
+        return Err("a zero vector has no direction".into());
+    }
+    for x in &mut values {
+        *x /= scale;
+    }
+    normalize(&mut values);
+    Ok(values)
+}
+
+fn memory_bank(text: &str, dims: usize) -> Result<Vec<Vec<f64>>, String> {
+    let mut rows = Vec::new();
+    for (i, line) in text.lines().enumerate() {
+        let row = unit_vector(line).map_err(|e| format!("memory #{}: {e}", i))?;
+        if row.len() != dims {
+            return Err(format!(
+                "memory #{i} has {} coordinates, query has {dims}",
+                row.len()
+            ));
+        }
+        rows.push(row);
+    }
+    if rows.is_empty() {
+        return Err("memory file is empty".into());
+    }
+    Ok(rows)
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    let (memories, query, target) = match args.as_slice() {
+        [] => {
+            let memories: Vec<_> = (0..N_MEMORIES).map(pattern).collect();
+            let query = corrupt(&memories[TARGET]);
+            (memories, query, Some(TARGET))
+        }
+        [path, coordinates] => {
+            let query = unit_vector(coordinates.to_str().ok_or("query must be text")?)?;
+            let memories = memory_bank(&std::fs::read_to_string(path)?, query.len())?;
+            (memories, query, None)
+        }
+        _ => return Err("usage: associative_recall [MEMORIES.txt 'QUERY COORDINATES']".into()),
+    };
 
     let mut nearest: Vec<(usize, f64)> = memories
         .iter()
@@ -71,21 +123,53 @@ fn main() {
     let lse_weights = lse_weights(&query, &memories, BETA);
     let sparse_weights = sparsemax_weights(&query, &memories, BETA);
 
-    println!("memories: {N_MEMORIES}, dims: {DIMS}, beta: {BETA}");
-    println!("target memory: #{TARGET}");
+    println!(
+        "memories: {}, dims: {}, beta: {BETA}",
+        memories.len(),
+        query.len()
+    );
+    if let Some(target) = target {
+        println!("target memory: #{target}");
+    }
     println!(
         "nearest raw memory: #{} at distance {:.4}",
         nearest[0].0, nearest[0].1
     );
-    println!(
+    if let Some(target) = target {
+        println!(
         "distance(query, target): {:.4}; distance(lse, target): {:.4}; distance(sparse, target): {:.4}",
-        l2(&query, &memories[TARGET]),
-        l2(&lse, &memories[TARGET]),
-        l2(&sparse, &memories[TARGET])
+        l2(&query, &memories[target]),
+        l2(&lse, &memories[target]),
+        l2(&sparse, &memories[target])
     );
+    } else {
+        println!("LSE retrieval: {lse:?}");
+        println!("sparsemax retrieval: {sparse:?}");
+    }
     println!("top LSE weights: {:?}", top_weights(&lse_weights, 5));
     println!(
         "top sparsemax weights: {:?}",
         top_weights(&sparse_weights, 5)
     );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_and_normalizes_rows_in_file_order() {
+        assert_eq!(
+            memory_bank("1e308 0\n0 1e-308\n", 2).unwrap(),
+            vec![vec![1., 0.], vec![0., 1.]]
+        );
+    }
+
+    #[test]
+    fn rejects_rows_that_cannot_be_compared_to_the_query() {
+        for bad in ["", "1", "1 0\n\n0 1", "0 0", "1 NaN", "inf 0", "x 0"] {
+            assert!(memory_bank(bad, 2).is_err(), "{bad:?}");
+        }
+    }
 }

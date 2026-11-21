@@ -53,7 +53,8 @@ cargo run --example sparse_attention --release
 cargo run --example basin_scan --release
 ```
 
-See [`examples/README.md`](examples/README.md) for what each example measures.
+To query your own memories, pass a text file and a query to the
+[associative recall example](examples/README.md#query-your-own-memories).
 
 ## References
 

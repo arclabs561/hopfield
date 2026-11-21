@@ -1,5 +1,21 @@
 # hopfield examples
 
+## Query your own memories
+
+Each line holds one pattern. Pass a file and a quoted, whitespace-separated
+query with the same number of coordinates:
+
+```sh
+printf '%s\n' '1 0' '0 1' '-1 0' > memories.txt
+cargo run --example associative_recall -- memories.txt '0.8 0.2'
+```
+
+Row IDs start at zero. The example normalizes each row and the query to unit
+length. For this query the nearest memory is row 0. Compare the weights and
+retrieved vectors from log-sum-exp and sparsemax. Run without arguments to
+compare retrieval against a known target in the generated bank.
+
+
 Run examples with `--release`; the numeric outputs are easier to compare when
 the optimizer is enabled.
 
